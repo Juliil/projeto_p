@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: projetop_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hazak}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hazak}
+      POSTGRES_DB: ${POSTGRES_DB:-hazak}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hazak}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: projetop_backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-hazak}:${POSTGRES_PASSWORD:-hazak}@db:5432/${POSTGRES_DB:-hazak}
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-em-producao}
+      EMPRESA_NOME: ${EMPRESA_NOME:-Hazak}
+    ports:
+      - "8001:8000"
+
+  frontend:
+    build: ./frontend
+    container_name: projetop_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_URL: http://localhost:8001
+    ports:
+      - "5174:5173"
+
+volumes:
+  pgdata:
